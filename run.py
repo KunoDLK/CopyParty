@@ -24,16 +24,17 @@ def ensure_pip():
         print("Bootstrapping pip with ensurepip...")
         ensurepip.bootstrap(upgrade=True)
 
-def install_copyparty():
+def install_packages(packages):
     cmd = [sys.executable, "-m", "pip", "install", "--upgrade"]
     if not in_venv():
         cmd.append("--user")
-    cmd.append("copyparty")
+    cmd += packages
     run(cmd)
 
 def main():
     ensure_pip()
-    install_copyparty()
+    # Install both copyparty and cfssl
+    install_packages(["copyparty", "cfssl"])
 
     # Equivalent to: .\copyparty-sfx.py -c .\config.txt
     config_path = os.path.normpath(os.path.join(".", "config.txt"))
