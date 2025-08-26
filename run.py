@@ -1,52 +1,77 @@
 #!/usr/bin/env python3
 import os
 import sys
+import shutil
+import signal
+import tempfile
 import subprocess
 
-def in_venv():
-    return sys.prefix != getattr(sys, "base_prefix", sys.prefix)
-
-def run(cmd):
+def run(cmd, cwd=None):
     print("+", " ".join(cmd))
-    subprocess.check_call(cmd)
+    subprocess.check_call(cmd, cwd=cwd)
 
-def ensure_pip():
+def script_dir():
+    return os.path.dirname(os.path.abspath(__file__))
+
+def venv_python(venv_path):
+    if os.name == "nt":
+        return os.path.join(venv_path, "Scripts", "python.exe")
+    return os.path.join(venv_path, "bin", "python")
+
+def create_fresh_venv(venv_path):
+    # Create a brand new venv with up-to-date pip tooling
     try:
-        import pip  # noqa: F401
-    except Exception:
-        try:
-            import ensurepip
-        except Exception:
-            sys.stderr.write(
-                "pip is not available and ensurepip is missing; please install pip for this Python.\n"
-            )
-            raise
-        print("Bootstrapping pip with ensurepip...")
-        ensurepip.bootstrap(upgrade=True)
+        run([sys.executable, "-m", "venv", "--upgrade-deps", venv_path])
+    except subprocess.CalledProcessError:
+        run([sys.executable, "-m", "venv", venv_path])
 
-def install_packages(packages):
-    cmd = [sys.executable, "-m", "pip", "install", "--upgrade"]
-    if not in_venv():
-        cmd.append("--user")
-    cmd += packages
-    run(cmd)
+def install_packages(py_exe, packages):
+    # Upgrade pip tooling then install requested packages
+    run([py_exe, "-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel"])
+    run([py_exe, "-m", "pip", "install", "--upgrade"] + list(packages))
 
 def main():
-    ensure_pip()
-    # Install both copyparty and cfssl
-    install_packages(["copyparty", "cfssl"])
-
-    # Equivalent to: .\copyparty-sfx.py -c .\config.txt
-    config_path = os.path.normpath(os.path.join(".", "config.txt"))
+    sd = script_dir()
+    config_path = os.path.normpath(os.path.join(sd, "config.txt"))
     if not os.path.exists(config_path):
         sys.stderr.write(f"Config file not found: {config_path}\n")
         sys.exit(1)
 
-    print("Starting copyparty (equivalent to '.\\copyparty-sfx.py -c .\\config.txt')...")
-    cmd = [sys.executable, "-m", "copyparty", "-c", config_path]
+    # Fresh venv each run in a temp folder within the repo (dot-prefixed)
+    venv_path = tempfile.mkdtemp(prefix=".venv-run-", dir=sd)
+    py = venv_python(venv_path)
 
-    # Replace current process so Ctrl+C/signals work naturally
-    os.execv(sys.executable, cmd)
+    try:
+        print(f"Creating fresh virtual environment in {venv_path} ...")
+        create_fresh_venv(venv_path)
+
+        # Install required packages into the fresh venv
+        install_packages(py, ["copyparty", "cfssl", "pillow"])
+
+        print("Starting copyparty (equivalent to '.\\copyparty-sfx.py -c .\\config.txt')...")
+        cmd = ["sudo", py, "-m", "copyparty", "-c", config_path]
+
+        # Run as a child process so we can clean up the venv afterwards
+        proc = subprocess.Popen(cmd, cwd=sd)
+        try:
+            returncode = proc.wait()
+        except KeyboardInterrupt:
+            # Forward Ctrl+C to child, then wait for it to exit
+            try:
+                if os.name == "nt":
+                    proc.send_signal(signal.CTRL_BREAK_EVENT)  # best-effort on Windows
+                else:
+                    proc.send_signal(signal.SIGINT)
+            except Exception:
+                pass
+            returncode = proc.wait()
+        sys.exit(returncode)
+    finally:
+        # Remove the fresh venv directory after run
+        try:
+            shutil.rmtree(venv_path)
+        except Exception as e:
+            print(f"Warning: failed to remove venv at {venv_path}: {e}", file=sys.stderr)
 
 if __name__ == "__main__":
     main()
