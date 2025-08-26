@@ -1,0 +1,33 @@
+[global]
+  z      # enable all zeroconf features (mdns, ssdp)
+  z-on: 192.168.0.0/16, 10.1.2.0/24  # restrict to certain subnets
+  qrs
+  e2d
+  e2ds
+  e2dsa
+  e2ts
+  shr: /share
+
+[accounts]
+  root: overide
+  sarah: bear
+
+[/public]
+./public  # ...this folder on the server filesystem
+  accs:
+    A: root, sarah
+    wG: *
+
+[/1hr-temp]
+./temp  # ...this folder on the server filesystem
+  accs:
+    A: root, sarah
+    rwG: *
+  flags:
+    lifetime:3600
+        
+
+[/private]
+./private  # ...this folder on the server filesystem
+  accs:
+    A: root, sarah
