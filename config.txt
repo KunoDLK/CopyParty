@@ -13,13 +13,13 @@
   sarah: bear
 
 [/public]
-./public  # ...this folder on the server filesystem
+./Storage/public  # ...this folder on the server filesystem
   accs:
     A: root, sarah
     wG: *
 
 [/1hr-temp]
-./temp  # ...this folder on the server filesystem
+./Storage/temp  # ...this folder on the server filesystem
   accs:
     A: root, sarah
     rwG: *
@@ -28,6 +28,6 @@
         
 
 [/private]
-./private  # ...this folder on the server filesystem
+./Storage/private  # ...this folder on the server filesystem
   accs:
     A: root, sarah
