@@ -49,7 +49,10 @@ def main():
         install_packages(py, ["copyparty", "cfssl", "pillow"])
 
         print("Starting copyparty (equivalent to '.\\copyparty-sfx.py -c .\\config.txt')...")
-        cmd = ["sudo", py, "-m", "copyparty", "-c", config_path]
+        if sys.platform == "win32":
+            cmd = [py, "-m", "copyparty", "-c", config_path]
+        else:
+            cmd = ["sudo", py, "-m", "copyparty", "-c", config_path]
 
         # Run as a child process so we can clean up the venv afterwards
         proc = subprocess.Popen(cmd, cwd=sd)
