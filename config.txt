@@ -7,27 +7,21 @@
   e2dsa
   e2ts
   shr: /share
+  xff-hdr: cf-connecting-ip
+  rproxy: -1
 
 [accounts]
   root: overide
-  sarah: bear
 
-[/public]
-./Storage/public  # ...this folder on the server filesystem
-  accs:
-    A: root, sarah
-    wG: *
-
-[/1hr-temp]
+[/30day-temp]
 ./Storage/temp  # ...this folder on the server filesystem
   accs:
-    A: root, sarah
-    rwG: *
+    A: root
+    wG: *
   flags:
-    lifetime:3600
+    lifetime:2592000
         
-
 [/private]
 ./Storage/private  # ...this folder on the server filesystem
   accs:
-    A: root, sarah
+    A: root
